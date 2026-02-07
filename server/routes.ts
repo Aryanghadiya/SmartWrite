@@ -2,6 +2,11 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import OpenAI from "openai";
+import multer from "multer";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const pdf = require("pdf-parse");
+import mammoth from "mammoth";
 import {
   ANALYSIS_SYSTEM_PROMPT,
   REACTIONS_SYSTEM_PROMPT,
@@ -12,14 +17,19 @@ import {
 } from "./ai-prompts";
 
 const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+  apiKey: "ollama",
+  baseURL: "http://127.0.0.1:11434/v1",
 });
+
+import { registerChatRoutes } from "./replit_integrations/chat/routes";
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  registerChatRoutes(app);
 
   app.post("/api/ai/analyze", async (req, res) => {
     try {
@@ -30,7 +40,7 @@ export async function registerRoutes(
       }
 
       const response = await openai.chat.completions.create({
-        model: "gpt-5-mini",
+        model: "llama3",
         messages: [
           {
             role: "system",
@@ -51,10 +61,72 @@ export async function registerRoutes(
       }
 
       const analysis = JSON.parse(content);
+
+      // Save analysis if user is authenticated
+      if (req.isAuthenticated() && req.user) {
+        try {
+          await storage.createAnalysis({
+            userId: req.user.id,
+            originalText: text,
+            result: analysis,
+          });
+        } catch (saveError) {
+          console.error("Failed to save analysis history:", saveError);
+          // Don't fail the request if saving history fails
+        }
+      }
+
       res.json(analysis);
     } catch (error: any) {
       console.error("Analysis error:", error?.message || error);
       res.status(500).json({ error: "Analysis failed. Please try again." });
+    }
+  });
+
+  app.get("/api/history", async (req, res) => {
+    if (!req.isAuthenticated() || !req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    try {
+      const history = await storage.getAnalysesByUserId(req.user.id);
+      res.json(history);
+    } catch (error) {
+      console.error("History error:", error);
+      res.status(500).json({ error: "Failed to fetch history" });
+    }
+  });
+
+  app.post("/api/upload", upload.single("file"), async (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    try {
+      const buffer = req.file.buffer;
+      const mimeType = req.file.mimetype;
+      let text = "";
+
+      if (mimeType === "application/pdf") {
+        const data = await pdf(buffer);
+        text = data.text;
+      } else if (
+        mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      ) {
+        const result = await mammoth.extractRawText({ buffer });
+        text = result.value;
+      } else if (mimeType === "text/plain") {
+        text = buffer.toString("utf-8");
+      } else {
+        return res.status(400).json({ error: "Unsupported file type" });
+      }
+
+      // Basic cleanup
+      text = text.trim();
+      res.json({ text });
+    } catch (error) {
+      console.error("File processing error:", error);
+      res.status(500).json({ error: "Failed to process file" });
     }
   });
 
@@ -67,7 +139,7 @@ export async function registerRoutes(
       }
 
       const response = await openai.chat.completions.create({
-        model: "gpt-5-mini",
+        model: "llama3",
         messages: [
           {
             role: "system",
@@ -104,7 +176,7 @@ export async function registerRoutes(
       }
 
       const response = await openai.chat.completions.create({
-        model: "gpt-5-mini",
+        model: "llama3",
         messages: [
           {
             role: "system",
@@ -141,13 +213,14 @@ export async function registerRoutes(
       }
 
       const response = await openai.chat.completions.create({
-        model: "gpt-5-mini",
+        model: "llama3",
         messages: [
           { role: "system", content: PARAPHRASE_PROMPT },
           { role: "user", content: text },
         ],
         response_format: { type: "json_object" },
         max_completion_tokens: 2048,
+        temperature: 0.9,
       });
 
       const content = response.choices[0]?.message?.content;
@@ -172,7 +245,7 @@ export async function registerRoutes(
       }
 
       const response = await openai.chat.completions.create({
-        model: "gpt-5-mini",
+        model: "llama3",
         messages: [
           { role: "system", content: SUMMARIZE_PROMPT },
           { role: "user", content: text },
@@ -219,7 +292,7 @@ export async function registerRoutes(
       ];
 
       const stream = await openai.chat.completions.create({
-        model: "gpt-5-mini",
+        model: "llama3",
         messages,
         stream: true,
         max_completion_tokens: 2048,

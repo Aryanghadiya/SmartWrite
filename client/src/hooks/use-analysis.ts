@@ -107,6 +107,7 @@ export function useAnalysis() {
 
   return {
     analysis,
+    setAnalysis,
     reactions,
     isAnalyzing,
     isGettingReactions,

@@ -4,3 +4,15 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+.env
+.env.local
+.env.*.local
+.local/
+*.log
+check-lucide.ts
+check_output.txt
+check_output_test.txt
+log_mongo_2.txt
+output*.log
+test*.ts
+test-output.txt

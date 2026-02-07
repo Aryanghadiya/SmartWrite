@@ -1,42 +1,27 @@
-import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, serial, integer, timestamp, jsonb } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
+
 import { z } from "zod";
 
-export * from "./models/chat";
-
-export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
-});
-
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
+export const insertUserSchema = z.object({
+  username: z.string(),
+  password: z.string(),
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
+export type User = InsertUser & { id: string };
 
-export const documents = pgTable("documents", {
-  id: serial("id").primaryKey(),
-  title: text("title").notNull().default("Untitled Document"),
-  content: text("content").notNull().default(""),
-  audience: text("audience").default("general"),
-  relationship: text("relationship").default("peer"),
-  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
-});
-
-export const insertDocumentSchema = createInsertSchema(documents).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
+export const insertDocumentSchema = z.object({
+  title: z.string().default("Untitled Document"),
+  content: z.string().default(""),
+  audience: z.string().default("general"),
+  relationship: z.string().default("peer"),
 });
 
 export type InsertDocument = z.infer<typeof insertDocumentSchema>;
-export type Document = typeof documents.$inferSelect;
+export type Document = InsertDocument & {
+  id: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
 export const analysisResultSchema = z.object({
   grammar: z.object({
@@ -89,6 +74,15 @@ export const analysisResultSchema = z.object({
 
 export type AnalysisResult = z.infer<typeof analysisResultSchema>;
 
+export const insertAnalysisSchema = z.object({
+  userId: z.string(),
+  originalText: z.string(),
+  result: analysisResultSchema,
+});
+
+export type InsertAnalysis = z.infer<typeof insertAnalysisSchema>;
+export type Analysis = InsertAnalysis & { id: string; createdAt: Date };
+
 export const readerReactionSchema = z.object({
   reactions: z.array(z.object({
     audience: z.string(),
@@ -106,3 +100,32 @@ export const toneTransformSchema = z.object({
 });
 
 export type ToneTransform = z.infer<typeof toneTransformSchema>;
+
+// Chat models
+export const insertConversationSchema = z.object({
+  title: z.string(),
+});
+
+export type InsertConversation = z.infer<typeof insertConversationSchema>;
+export type Conversation = InsertConversation & {
+  id: string;
+  createdAt: Date;
+};
+
+export const insertMessageSchema = z.object({
+  conversationId: z.string(),
+  role: z.string(),
+  content: z.string(),
+});
+
+export type InsertMessage = z.infer<typeof insertMessageSchema>;
+export type Message = InsertMessage & {
+  id: string;
+  createdAt: Date;
+};
+
+// Mock objects for compatibility if needed, though they shouldn't be used
+export const users = {};
+export const documents = {};
+export const conversations = {};
+export const messages = {};

@@ -1,46 +1,65 @@
-import { type User, type InsertUser, type Document, type InsertDocument, documents, users } from "@shared/schema";
-import { db } from "./db";
-import { eq } from "drizzle-orm";
+
+import { User, Document, Analysis } from "./models";
+import { type InsertUser, type InsertDocument } from "../shared/schema";
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
-  getDocument(id: number): Promise<Document | undefined>;
-  createDocument(doc: InsertDocument): Promise<Document>;
-  updateDocument(id: number, doc: Partial<InsertDocument>): Promise<Document | undefined>;
+  getUser(id: string): Promise<any | undefined>;
+  getUserByUsername(username: string): Promise<any | undefined>;
+  createUser(user: InsertUser): Promise<any>;
+  getDocument(id: string): Promise<any | undefined>;
+  createDocument(doc: InsertDocument): Promise<any>;
+  updateDocument(id: string, doc: Partial<InsertDocument>): Promise<any | undefined>;
+  createAnalysis(analysis: any): Promise<any>;
+  getAnalysesByUserId(userId: string): Promise<any[]>;
 }
 
-export class DatabaseStorage implements IStorage {
-  async getUser(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
+export class MongoStorage implements IStorage {
+  async getUser(id: string): Promise<any | undefined> {
+    const user = await User.findById(id);
     return user || undefined;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
+  async getUserByUsername(username: string): Promise<any | undefined> {
+    const user = await User.findOne({ username });
     return user || undefined;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db.insert(users).values(insertUser).returning();
-    return user;
+  async createUser(insertUser: InsertUser): Promise<any> {
+    const user = new User(insertUser);
+    return await user.save();
   }
 
-  async getDocument(id: number): Promise<Document | undefined> {
-    const [doc] = await db.select().from(documents).where(eq(documents.id, id));
-    return doc || undefined;
+  async getDocument(id: string): Promise<any | undefined> {
+    try {
+      const doc = await Document.findById(id);
+      return doc || undefined;
+    } catch (error) {
+      return undefined;
+    }
   }
 
-  async createDocument(doc: InsertDocument): Promise<Document> {
-    const [result] = await db.insert(documents).values(doc).returning();
-    return result;
+  async createDocument(doc: InsertDocument): Promise<any> {
+    const newDoc = new Document(doc);
+    return await newDoc.save();
   }
 
-  async updateDocument(id: number, doc: Partial<InsertDocument>): Promise<Document | undefined> {
-    const [result] = await db.update(documents).set(doc).where(eq(documents.id, id)).returning();
-    return result || undefined;
+  async updateDocument(id: string, doc: Partial<InsertDocument>): Promise<any | undefined> {
+    try {
+      const updatedDoc = await Document.findByIdAndUpdate(id, doc, { new: true });
+      return updatedDoc || undefined;
+    } catch (error) {
+      return undefined;
+    }
+  }
+
+  async createAnalysis(analysis: any): Promise<any> {
+    const newAnalysis = new Analysis(analysis);
+    return await newAnalysis.save();
+  }
+
+  async getAnalysesByUserId(userId: string): Promise<any[]> {
+    return await Analysis.find({ userId }).sort({ createdAt: -1 });
   }
 }
 
-export const storage = new DatabaseStorage();
+export const storage = new MongoStorage();

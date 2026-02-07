@@ -59,8 +59,16 @@ app.use((req, res, next) => {
   next();
 });
 
+
 (async () => {
+  const { connectDB } = await import("./db");
+  await connectDB();
+
+  const { setupAuth } = await import("./auth");
+  setupAuth(app);
+
   await registerRoutes(httpServer, app);
+
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
@@ -94,7 +102,6 @@ app.use((req, res, next) => {
     {
       port,
       host: "0.0.0.0",
-      reusePort: true,
     },
     () => {
       log(`serving on port ${port}`);

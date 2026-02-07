@@ -73,7 +73,7 @@ export function AiChatSidebar({ isOpen, onClose, writingContent }: AiChatSidebar
                 return updated;
               });
             }
-          } catch {}
+          } catch { }
         }
       }
     } catch {
@@ -122,6 +122,9 @@ export function AiChatSidebar({ isOpen, onClose, writingContent }: AiChatSidebar
                 "Help me brainstorm ideas",
                 "Summarize my writing",
                 "Suggest a stronger opening",
+                "Make this more concise",
+                "Check for logic gaps",
+                "Rewrite for a formal tone",
               ].map((suggestion) => (
                 <Button
                   key={suggestion}

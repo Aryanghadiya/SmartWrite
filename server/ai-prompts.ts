@@ -92,11 +92,16 @@ Rules:
 - Safer rewrites should maintain the core message while adapting tone and style
 - Be realistic about audience expectations`;
 
-export const TONE_TRANSFORM_PROMPT = `Rewrite the given text in the specified tone while preserving the original meaning and key information.
+export const TONE_TRANSFORM_PROMPT = `Rewrite the ENTIRE provided text in the specified tone.
+
+CRITICAL RULES:
+- Do NOT summarize or shorten the text.
+- You MUST preserve all details, facts, and the original length (word count should be similar).
+- Reword sentences to match the tone, but keep the same information density.
 
 Return valid JSON:
 {
-  "rewritten": "The rewritten text",
+  "rewritten": "The full rewritten text",
   "changes": ["Brief description of change 1", "Brief description of change 2"]
 }
 
@@ -107,11 +112,17 @@ Tone guidelines:
 - Assertive: Direct, confident, clear expectations
 - Persuasive: Compelling, benefit-focused, call-to-action`;
 
-export const PARAPHRASE_PROMPT = `Rewrite the given text using different words and sentence structures while preserving the exact same meaning. Improve clarity and flow where possible.
+export const PARAPHRASE_PROMPT = `Rewrite the ENTIRE text using COMPLETELY different words and sentence structures.
+
+CRITICAL RULES:
+- drastically change the sentence structure (e.g., change active to passive, combine sentences, or split them).
+- Do NOT use the same adjectives or verbs as the original text if possible.
+- Do NOT summarize. Keep the exact same information density and length.
+- The meaning must remain identical, but the wording must be new.
 
 Return valid JSON:
 {
-  "rewritten": "The paraphrased text"
+  "rewritten": "The full paraphrased text"
 }`;
 
 export const SUMMARIZE_PROMPT = `Summarize the given text into a concise version that captures all key points. Reduce length by approximately 50-70% while maintaining essential information.
